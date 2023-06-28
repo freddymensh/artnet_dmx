@@ -65,18 +65,8 @@ bool dmx_available = false;
 #define LCD
 #ifdef LCD
   #ifdef TX
-    //#include <Adafruit_GFX.h>
-    // //#include <Adafruit_I2CDevice.h>
-    #include <Adafruit_ST7789.h>
-
-    #define TFT_MOSI 23  // SDA Pin on ESP32
-    #define TFT_SCLK 18  // SCL Pin on ESP32
-    #define TFT_CS   15  // Chip select control pin
-    #define TFT_DC    2  // Data Command control pin
-    #define TFT_RST   4  // Reset pin (could connect to RST pin)
-
-    Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);   // Initialize Adafruit ST7789 TFT library
-    //Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST); 
+    #include <TFT_eSPI.h>
+    TFT_eSPI tft = TFT_eSPI();
   #endif
 #endif
 
@@ -154,11 +144,11 @@ void setup() {
   // set up LCD
   #ifdef LCD
     #ifdef TX
-      tft.init(240, 240, SPI_MODE2);    // Init ST7789 display 240x240 pixel
-      tft.setRotation(3);
-      tft.fillScreen(ST77XX_BLACK);
+      tft.init();
+      tft.setRotation(1);
+      tft.fillScreen(TFT_BLACK);
 
-      tft.setTextColor(ST77XX_WHITE);
+      tft.setTextColor(TFT_WHITE);
       tft.println("hello world");
     #endif
   #endif
