@@ -1,0 +1,49 @@
+# Farben
+	- Hintergrund: #000000
+	- Farbe 1: 
+		- Benutzt für Status OFF
+	Farbe 2: #FFE101
+		- Benutzt für Status ON
+	
+# Layout Grundidee:
+	- Gerundete Kacheln, die als Statusaneige verwendet werden
+	- Kacheln haben den Status ON oder OFF
+	- Kachelfarbe ist abhängig vom Status
+
+# Kacheln:
+	- WIFI
+		- ON: Wenn WIFI verbunden
+			- <SSID>
+		- OFF: Wenn WIFI getrennt
+			- Ethernet nicht verbunden und SSID hinterlegt
+				- "WiFi connecting ..."
+				- animierte Punkte
+			- Ethernet verbunden oder keine SSID hinterlegt
+				- "WiFi off"
+	- ETHERNET
+		- ON: Wenn Ethernet verbunden
+			- "Ethernet ON"
+		- OFF: Wenn Ethernet getrennt
+			- "Ethernet OFF"
+	- IP:
+		- ON: Wenn Netzwerk verbunden
+			- <IP>
+			- TODO: Handling von IPv4 und IPv6
+		- OFF: Wenn Netzwerk getrennt
+			- "--.--.--.--"
+	- URL (Zweizeiler):
+		- ON: Wenn Netzwerk verbunden
+			- "URL\n<URL>"
+		- OFF: Wenn Netzwerk getrennt
+			- "URL\n------"
+	- Universe
+		- always ON:
+			- "UNIVERSE: %2d"
+		- never OFF
+	- ArtNet status (Zweizeiler):
+		- ON: wenn letztes ArtNet-package nicht älter als Sekunden alt
+			- "ArtNet time\n<HH:MM:SS>"
+	- DMX Status (Zweizeiler):
+		- always ON:
+			-  "DMX <IN/OUT>\ntime<HH::MM::SS>"
+		

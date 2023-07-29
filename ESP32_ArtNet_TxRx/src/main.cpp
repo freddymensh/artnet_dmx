@@ -66,7 +66,31 @@ bool dmx_available = false;
 #ifdef LCD
   #ifdef TX
     #include <TFT_eSPI.h>
+    #define TFT_BG_COLOR TFT_BLACK
+    #define TFT_COLOR_1 0xFF00
+    #define TFT_COLOR_2 0x2124
+    #define TFT_LAYOUT_MARGIN_LEFT 7
+    #define TFT_LAYOUT_MARGIN_RIGHT TFT_LAYOUT_MARGIN_LEFT
+    #define TFT_LAYOUT_MARGIN_TOP  7
+    #define TFT_LAYOUT_BORDER_THICKNESS 3
+    #define TFT_LAYOUT_BUBBLE_H1 24
+    #define TFT_LAYOUT_BUBBLE_H2 (2*TFT_LAYOUT_BUBBLE_H1)
+    #define TFT_LAYOUT_BUBBLE_W1 (82 + TFT_LAYOUT_BUBBLE_H1)
+    #define TFT_LAYOUT_BUBBLE_W2 (TFT_WIDTH-TFT_LAYOUT_MARGIN_LEFT-TFT_LAYOUT_MARGIN_RIGHT)
+    #define TFT_LAYOUT_CENTER 120
+    #define TFT_LAYOUT_MARGIN_IN1 7
+    #define TFT_LAYOUT_MARGIN_IN2 6
+    #define TFT_LAYOUT_SEP_H 3
+    #define TFT_LAYOUT_SEP_W TFT_LAYOUT_BUBBLE_W2
     TFT_eSPI tft = TFT_eSPI();
+    void tft_bubble_H1_solid(int32_t x, int32_t y, int32_t width, int32_t height, int32_t color, int32_t bg_color);
+    void tft_bubble_H1_hollow(int32_t x, int32_t y, int32_t width, int32_t height, int32_t border, int32_t color, int32_t bg_color);
+    void tft_draw_wifi_bubble(bool hollow);
+    void tft_draw_ip_bubble();
+    void tft_draw_ethernet_bubble(bool hollow);
+    void tft_draw_url_bubble();
+    void tft_horizontal_sep1();
+    void tft_horizontal_sep2();
   #endif
 #endif
 
@@ -146,10 +170,38 @@ void setup() {
     #ifdef TX
       tft.init();
       tft.setRotation(1);
-      tft.fillScreen(TFT_BLACK);
 
-      tft.setTextColor(TFT_WHITE);
-      tft.println("hello world");
+      // all elements on screen
+      tft.fillScreen(TFT_BG_COLOR);
+      tft_draw_wifi_bubble(false);
+      tft_draw_ip_bubble();
+      tft_draw_ethernet_bubble(false);
+      tft_horizontal_sep1();
+      tft_draw_url_bubble();
+      tft_horizontal_sep2();
+
+      //tft.setTextColor(TFT_WHITE);
+      /*
+      tft.drawPixel(0,   0,   TFT_RED);
+      tft.drawPixel(239, 0,   TFT_GREEN);
+      tft.drawPixel(239, 239, TFT_BLUE);
+      tft.drawPixel(0,   239, TFT_ORANGE);
+      */
+      // wifi bubble
+      
+      //tft.fillSmoothCircle(TFT_LAYOUT_X_1, TFT_LAYOUT_Y_1, TFT_LAYOUT_RADIUS, TFT_COLOR_1, TFT_BG_COLOR);
+      //tft.fillRect(TFT_LAYOUT_X_1, TFT_LAYOUT_COL_2-TFT_LAYOUT_RADIUS, TFT_LAYOUT_NARROW_BUBBLE, 2*TFT_LAYOUT_RADIUS+1, TFT_GREEN);
+      //tft.fillSmoothCircle(TFT_LAYOUT_X_2, TFT_LAYOUT_Y_1, TFT_LAYOUT_RADIUS, TFT_COLOR_1, TFT_BG_COLOR);
+      
+      
+      
+      /*
+      tft.fillRect(10, 20, 30, 60, TFT_GREEN);
+      tft.fillSmoothCircle(30,  30,  TFT_LAYOUT_RADIUS, TFT_RED, TFT_BG_COLOR);
+      tft.fillSmoothCircle(209, 30,  TFT_LAYOUT_RADIUS, TFT_GREEN, TFT_BG_COLOR);
+      tft.fillSmoothCircle(209, 209, TFT_LAYOUT_RADIUS, TFT_BLUE, TFT_BG_COLOR);
+      tft.fillSmoothCircle(30,  209, TFT_LAYOUT_RADIUS, TFT_ORANGE, TFT_BG_COLOR);
+      */
     #endif
   #endif
 
@@ -286,3 +338,118 @@ void printLocalTime(bool newline){
     Serial.println("");
   }
 }
+
+//////////////////////////////////////////
+
+#ifdef TX
+#ifdef LCD
+
+void tft_bubble_H1_solid(int32_t x, int32_t y, int32_t width, int32_t height, int32_t color, int32_t bg_color){
+  /*
+  Draws a bubble onto the screen. 
+  The overall width is taken from the param width
+  The radius of the sides is half the height.
+  x and y is the upper left corner 
+  */
+  int32_t radius = (int)(height/2);
+  int32_t box_width = width - height;
+  /*
+  if (radius % 2 == 0){
+   height++;
+  }
+  */
+  height++;
+  tft.fillSmoothCircle(x+radius,           y+radius, radius, color, bg_color);
+  tft.fillSmoothCircle(x+radius+box_width, y+radius, radius, color, bg_color);
+  tft.fillRect(x+radius, y, box_width, height, color);
+}
+
+void tft_bubble_H1_hollow(int32_t x, int32_t y, int32_t width, int32_t height, int32_t border, int32_t color, int32_t bg_color){
+  tft_bubble_H1_solid(x,        y,        width,            height,            color,    bg_color);
+  tft_bubble_H1_solid(x+border, y+border, width-(2*border), height-(2*border), bg_color, color);
+}
+
+//////////////////////////////////////////
+
+void tft_horizontal_sep(int32_t y, int32_t color){
+  tft.fillRect(TFT_LAYOUT_MARGIN_LEFT, y, TFT_LAYOUT_SEP_W, TFT_LAYOUT_SEP_H, TFT_COLOR_2);
+}
+
+//////////////////////////////////////////
+
+void tft_draw_wifi_bubble(bool hollow){
+  int32_t x = TFT_LAYOUT_MARGIN_LEFT;
+  int32_t y = TFT_LAYOUT_MARGIN_TOP;
+  int32_t width = TFT_LAYOUT_BUBBLE_W1;
+  int32_t height = TFT_LAYOUT_BUBBLE_H1;
+  int32_t border = TFT_LAYOUT_BORDER_THICKNESS;
+  int32_t color = TFT_COLOR_1;
+  int32_t bg_color = TFT_BG_COLOR;
+  if (hollow){
+    tft_bubble_H1_hollow(x, y, width, height, border, color, bg_color);
+  } else{
+    tft_bubble_H1_solid(x, y, width, height, color, bg_color);
+  }
+}
+
+//////////////////////////////////////////
+
+void tft_draw_ip_bubble(){
+  int32_t x = TFT_LAYOUT_CENTER+TFT_LAYOUT_MARGIN_LEFT;
+  int32_t y = TFT_LAYOUT_MARGIN_TOP;
+  int32_t width = TFT_LAYOUT_BUBBLE_W1;
+  int32_t height = TFT_LAYOUT_BUBBLE_H1;
+  int32_t border = TFT_LAYOUT_BORDER_THICKNESS;
+  int32_t color = TFT_COLOR_1;
+  int32_t bg_color = TFT_BG_COLOR;
+  tft_bubble_H1_solid(x, y, width, height, color, bg_color);
+}
+
+//////////////////////////////////////////
+
+void tft_draw_ethernet_bubble(bool hollow){
+  int32_t x = TFT_LAYOUT_MARGIN_LEFT;
+  int32_t y = TFT_LAYOUT_MARGIN_TOP+TFT_LAYOUT_BUBBLE_H1+TFT_LAYOUT_MARGIN_IN1;
+  int32_t width = TFT_LAYOUT_BUBBLE_W1;
+  int32_t height = TFT_LAYOUT_BUBBLE_H1;
+  int32_t border = TFT_LAYOUT_BORDER_THICKNESS;
+  int32_t color = TFT_COLOR_1;
+  int32_t bg_color = TFT_BG_COLOR;
+
+  if (hollow){
+    tft_bubble_H1_hollow(x, y, width, height, border, color, bg_color);
+  } else{
+    tft_bubble_H1_solid(x, y, width, height, color, bg_color);
+  }
+}
+
+//////////////////////////////////////////
+
+void tft_draw_url_bubble(){
+  int32_t x = TFT_LAYOUT_MARGIN_LEFT;
+  int32_t y = TFT_LAYOUT_MARGIN_TOP + 2*TFT_LAYOUT_BUBBLE_H1 + TFT_LAYOUT_MARGIN_IN1 + 2*TFT_LAYOUT_MARGIN_IN2 + TFT_LAYOUT_SEP_H;
+  int32_t width = TFT_LAYOUT_BUBBLE_W2;
+  int32_t height = TFT_LAYOUT_BUBBLE_H1;
+  int32_t color = TFT_COLOR_1;
+  int32_t bg_color = TFT_BG_COLOR;
+  tft_bubble_H1_solid(x, y, width, height, color, bg_color);
+}
+
+//////////////////////////////////////////
+
+void tft_horizontal_sep1(){
+  int32_t y = TFT_LAYOUT_MARGIN_TOP + 2*TFT_LAYOUT_BUBBLE_H1 + TFT_LAYOUT_MARGIN_IN1 + TFT_LAYOUT_MARGIN_IN2;
+  int32_t color = TFT_COLOR_2;
+  tft_horizontal_sep(y, color);
+}
+
+//////////////////////////////////////////
+
+void tft_horizontal_sep2(){
+  int32_t y = TFT_LAYOUT_MARGIN_TOP + 3*TFT_LAYOUT_BUBBLE_H1 + TFT_LAYOUT_MARGIN_IN1 + 3*TFT_LAYOUT_MARGIN_IN2 + TFT_LAYOUT_SEP_H;
+  int32_t color = TFT_COLOR_2;
+  tft_horizontal_sep(y, color);
+}
+
+#endif //LCD
+#endif //TX
