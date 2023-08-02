@@ -1,8 +1,9 @@
 #include <Arduino.h>
 #include <time.h>
 
-void dmx_status_print(void * pvParameters);
+void service_dmx_status_print(void * pvParameters);
 void artnet_u1_callback(const uint8_t* data, const uint16_t size);
+void print_wifi_status();
 void print_dmx(byte* dmx_buffer);
 void printLocalTime(bool newline=true);
 
@@ -19,7 +20,7 @@ void printLocalTime(bool newline=true);
 
 
 // LED settings
-byte LED_PINS[] = {22, 19, 5}; // pins at MCU where LEDs are connected
+byte LED_PINS[] = {22, 19, 5};  // pins at MCU where LEDs are connected
 #define DMX_CHANNEL_OFFSET 1    // DMX base address for LEDs
 #define N_CHANNELS 3            // number of channels occupied by LEDs
 
@@ -35,6 +36,8 @@ const int   daylightOffset_sec = 3600;
   #ifdef ETHERNET
     #include <ArtnetEther.h>
   #else  // WiFi
+    #define WIFI_RECONNECT_TRIALS 50
+
     const char* SSID = "FREDDY-L390 6365";//"Jubel";//"FREDDY-L390 6365";
     const char* PWD = "0936u)1E";//"69792805351678254921";//"0936u)1E";
     
@@ -64,6 +67,7 @@ bool dmx_available = false;
 // LCD
 #define LCD
 #ifdef LCD
+  //#include <gfxfont.h>
   #ifdef TX
     #include <TFT_eSPI.h>
     #define TFT_BG_COLOR TFT_BLACK
@@ -82,7 +86,14 @@ bool dmx_available = false;
     #define TFT_LAYOUT_MARGIN_IN2 6
     #define TFT_LAYOUT_SEP_H 3
     #define TFT_LAYOUT_SEP_W TFT_LAYOUT_BUBBLE_W2
+    
+    #define TFT_UPDATE_INTERVAL 2000
+
+    enum wifi_status {disconnected, connected}; 
+    int last_tft_update = 0;
+    
     TFT_eSPI tft = TFT_eSPI();
+
     void tft_bubble_H1_solid(int32_t x, int32_t y, int32_t width, int32_t height, int32_t color, int32_t bg_color);
     void tft_bubble_H1_hollow(int32_t x, int32_t y, int32_t width, int32_t height, int32_t border, int32_t color, int32_t bg_color);
     void tft_draw_wifi_bubble(bool hollow);
@@ -91,6 +102,12 @@ bool dmx_available = false;
     void tft_draw_url_bubble();
     void tft_horizontal_sep1();
     void tft_horizontal_sep2();
+    void tft_init_screen();
+    void tft_update_screen();
+    void service_tft_update_screen(void * pvParameters);
+
+    wifi_status tft_status_wifi = disconnected;
+
   #endif
 #endif
 
@@ -117,21 +134,36 @@ void setup() {
     Serial.print("RX\n");
   #endif
 
+  // set up LCD
+  #ifdef LCD
+    #ifdef TX
+      tft.init();
+      tft.setRotation(1);
+
+      // initialize all elements on screen
+      tft_init_screen();
+      
+    #endif
+  #endif
+
   // set up network
   #ifdef TX
     #ifdef ETHERNET
     #else  // WIFI
       WiFi.mode(WIFI_STA);
       WiFi.begin(SSID, PWD);
-      Serial.print("connecting wifi ");
-      while (WiFi.status() != WL_CONNECTED) {
+      int wifi_connect_counter = 0;
+      while ((WiFi.status() != WL_CONNECTED) and (wifi_connect_counter < WIFI_RECONNECT_TRIALS)) {
         Serial.print(".");
-        delay(250);
+        wifi_connect_counter++;
+      delay(250);
       }
-    Serial.printf("\nWiFi connected. ");
-    Serial.print(WiFi.SSID());
-    Serial.print(" @ ");
-    Serial.println(WiFi.localIP());
+      if (WiFi.status() == WL_CONNECTED){
+        print_wifi_status();
+      } else {
+        Serial.println("Wifi connection failed. Rebooting...");
+        ESP.restart();
+      }
     #endif
   #endif
 
@@ -165,50 +197,21 @@ void setup() {
   Serial.print("set time to: ");
   printLocalTime();
 
-  // set up LCD
-  #ifdef LCD
-    #ifdef TX
-      tft.init();
-      tft.setRotation(1);
-
-      // all elements on screen
-      tft.fillScreen(TFT_BG_COLOR);
-      tft_draw_wifi_bubble(false);
-      tft_draw_ip_bubble();
-      tft_draw_ethernet_bubble(false);
-      tft_horizontal_sep1();
-      tft_draw_url_bubble();
-      tft_horizontal_sep2();
-
-      //tft.setTextColor(TFT_WHITE);
-      /*
-      tft.drawPixel(0,   0,   TFT_RED);
-      tft.drawPixel(239, 0,   TFT_GREEN);
-      tft.drawPixel(239, 239, TFT_BLUE);
-      tft.drawPixel(0,   239, TFT_ORANGE);
-      */
-      // wifi bubble
-      
-      //tft.fillSmoothCircle(TFT_LAYOUT_X_1, TFT_LAYOUT_Y_1, TFT_LAYOUT_RADIUS, TFT_COLOR_1, TFT_BG_COLOR);
-      //tft.fillRect(TFT_LAYOUT_X_1, TFT_LAYOUT_COL_2-TFT_LAYOUT_RADIUS, TFT_LAYOUT_NARROW_BUBBLE, 2*TFT_LAYOUT_RADIUS+1, TFT_GREEN);
-      //tft.fillSmoothCircle(TFT_LAYOUT_X_2, TFT_LAYOUT_Y_1, TFT_LAYOUT_RADIUS, TFT_COLOR_1, TFT_BG_COLOR);
-      
-      
-      
-      /*
-      tft.fillRect(10, 20, 30, 60, TFT_GREEN);
-      tft.fillSmoothCircle(30,  30,  TFT_LAYOUT_RADIUS, TFT_RED, TFT_BG_COLOR);
-      tft.fillSmoothCircle(209, 30,  TFT_LAYOUT_RADIUS, TFT_GREEN, TFT_BG_COLOR);
-      tft.fillSmoothCircle(209, 209, TFT_LAYOUT_RADIUS, TFT_BLUE, TFT_BG_COLOR);
-      tft.fillSmoothCircle(30,  209, TFT_LAYOUT_RADIUS, TFT_ORANGE, TFT_BG_COLOR);
-      */
-    #endif
-  #endif
 
   // services
   xTaskCreatePinnedToCore (
-    dmx_status_print,     // Function to implement the task
+    service_dmx_status_print,     // Function to implement the task
     "dmx status print",   // Name of the task
+    1750,                 // Stack size in bytes
+    NULL,                 // Task input parameter
+    0,                    // Priority of the task
+    NULL,                 // Task handle.
+    1                     // Core where the task should run
+  );
+
+  xTaskCreatePinnedToCore (
+    service_tft_update_screen,     // Function to implement the task
+    "tft screen update",   // Name of the task
     1750,                 // Stack size in bytes
     NULL,                 // Task input parameter
     0,                    // Priority of the task
@@ -244,6 +247,27 @@ void loop() {
       analogWrite(LED_PINS[i], dmx_buffer[i+DMX_CHANNEL_OFFSET]);
     }
 
+    // reconnect wifi
+    #ifndef ETHERNET
+      if (WiFi.status() != WL_CONNECTED){
+        Serial.println("try reconnecting wifi");
+        //WiFi.begin(SSID, PWD);
+        WiFi.reconnect();
+        int reconnect_counter = 0;
+        while ((WiFi.status() != WL_CONNECTED) and (reconnect_counter < WIFI_RECONNECT_TRIALS)) {
+          Serial.print(".");
+          reconnect_counter++;
+        delay(250);
+        }
+        if (WiFi.status() == WL_CONNECTED){
+          print_wifi_status();
+        } else {
+          Serial.println("Reconnect failed. Rebooting...");
+          ESP.restart();
+        }
+      }
+    #endif
+
   #else
     if (xQueueReceive(dmx_queue, &event, DMX_PACKET_TIMEOUT_TICK)) {
       // read the packet from the driver buffer into 'data'
@@ -264,13 +288,25 @@ void loop() {
 
 //////////////////////////////////////////
 
-void dmx_status_print(void * pvParameters){
+void service_dmx_status_print(void * pvParameters){
   while(true){
     #ifdef TX
       // print dmx data
       if (millis()-last_dmx_print > DMX_PRINT_INTERVAL){
         last_dmx_print = millis();
         print_dmx(dmx_buffer);
+      }
+    #endif //ifdef TX
+  }
+}
+
+void service_tft_update_screen(void * pvParameters){
+  while(true){
+    #ifdef LCD
+      // print dmx data
+      if (millis()-last_tft_update > TFT_UPDATE_INTERVAL){
+        last_tft_update = millis();
+        tft_update_screen();
       }
     #endif //ifdef TX
   }
@@ -341,32 +377,50 @@ void printLocalTime(bool newline){
 
 //////////////////////////////////////////
 
+#ifndef ETHERNET
+
+void print_wifi_status(){
+  if (WiFi.status() == WL_CONNECTED){
+    Serial.printf("\nWiFi connected. ");
+    Serial.print(WiFi.SSID());
+    Serial.print(" @ ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("WiFi not connected.");
+  }
+}
+
+#endif // ETHERNET
+
+//////////////////////////////////////////
+
 #ifdef TX
 #ifdef LCD
 
 void tft_bubble_H1_solid(int32_t x, int32_t y, int32_t width, int32_t height, int32_t color, int32_t bg_color){
   /*
-  Draws a bubble onto the screen. 
+  Draws a solid bubble onto the screen. 
   The overall width is taken from the param width
-  The radius of the sides is half the height.
-  x and y is the upper left corner 
+  The radius of the sides is half the height. 
+  x and y is the upper left corner
   */
-  int32_t radius = (int)(height/2);
-  int32_t box_width = width - height;
-  /*
-  if (radius % 2 == 0){
-   height++;
-  }
-  */
-  height++;
-  tft.fillSmoothCircle(x+radius,           y+radius, radius, color, bg_color);
-  tft.fillSmoothCircle(x+radius+box_width, y+radius, radius, color, bg_color);
-  tft.fillRect(x+radius, y, box_width, height, color);
+
+  int32_t r = (int)(height/2);      // radius
+  tft.fillSmoothRoundRect(x, y, width, height, r, color, bg_color);
 }
 
 void tft_bubble_H1_hollow(int32_t x, int32_t y, int32_t width, int32_t height, int32_t border, int32_t color, int32_t bg_color){
-  tft_bubble_H1_solid(x,        y,        width,            height,            color,    bg_color);
-  tft_bubble_H1_solid(x+border, y+border, width-(2*border), height-(2*border), bg_color, color);
+  /*
+  Draws a hollow bubble onto the screen. 
+  The overall width is taken from the param width
+  The outer radius of the sides is half the height.
+  The inner radius is callulated from the param border. The param describes the width of the border.
+  x and y is the upper left corner
+  */
+  int32_t r = (int)(height/2);                 // outer radius
+  int32_t ir = (int)(height/2) - border + 1;   // inner radius
+  tft.drawSmoothRoundRect(x, y, r, ir, width, height, color, bg_color);
+  
 }
 
 //////////////////////////////////////////
@@ -377,7 +431,7 @@ void tft_horizontal_sep(int32_t y, int32_t color){
 
 //////////////////////////////////////////
 
-void tft_draw_wifi_bubble(bool hollow){
+void tft_draw_wifi_bubble(bool hollow, String message){
   int32_t x = TFT_LAYOUT_MARGIN_LEFT;
   int32_t y = TFT_LAYOUT_MARGIN_TOP;
   int32_t width = TFT_LAYOUT_BUBBLE_W1;
@@ -385,11 +439,25 @@ void tft_draw_wifi_bubble(bool hollow){
   int32_t border = TFT_LAYOUT_BORDER_THICKNESS;
   int32_t color = TFT_COLOR_1;
   int32_t bg_color = TFT_BG_COLOR;
+
+  // delete bubble
+  tft.fillRect(x, y, width+1, height+1, bg_color);
+  
+  // draw new bubble
   if (hollow){
     tft_bubble_H1_hollow(x, y, width, height, border, color, bg_color);
+    tft.setTextColor(color, bg_color);
   } else{
     tft_bubble_H1_solid(x, y, width, height, color, bg_color);
+    tft.setTextColor(bg_color, color);
   }
+
+  //message
+  int32_t max_text_width = width - height;
+  // TODO: shorten SSID if too long 
+  tft.setTextDatum(MC_DATUM);
+  tft.drawString(message, x+(int)(width/2), y+(int)(height/2));
+
 }
 
 //////////////////////////////////////////
@@ -402,7 +470,25 @@ void tft_draw_ip_bubble(){
   int32_t border = TFT_LAYOUT_BORDER_THICKNESS;
   int32_t color = TFT_COLOR_1;
   int32_t bg_color = TFT_BG_COLOR;
+  int32_t r = (int)(height/2);
+  
+  // delete old bubble
+  tft.fillRect(x, y, width+1, height+1, bg_color);
+
+  // draw new bubble
   tft_bubble_H1_solid(x, y, width, height, color, bg_color);
+
+  // print message
+  String message;
+  if (WiFi.status() == WL_CONNECTED){
+    message = WiFi.localIP().toString();
+  } else {
+    message = "---.---.---.---";
+  }
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(bg_color, color);
+  tft.drawString(message, x+(int)(width/2), y+(int)(height/2));
+
 }
 
 //////////////////////////////////////////
@@ -415,6 +501,7 @@ void tft_draw_ethernet_bubble(bool hollow){
   int32_t border = TFT_LAYOUT_BORDER_THICKNESS;
   int32_t color = TFT_COLOR_1;
   int32_t bg_color = TFT_BG_COLOR;
+  int32_t r = (int)(height/2);
 
   if (hollow){
     tft_bubble_H1_hollow(x, y, width, height, border, color, bg_color);
@@ -432,6 +519,8 @@ void tft_draw_url_bubble(){
   int32_t height = TFT_LAYOUT_BUBBLE_H1;
   int32_t color = TFT_COLOR_1;
   int32_t bg_color = TFT_BG_COLOR;
+  int32_t r = (int)(height/2);
+
   tft_bubble_H1_solid(x, y, width, height, color, bg_color);
 }
 
@@ -450,6 +539,54 @@ void tft_horizontal_sep2(){
   int32_t color = TFT_COLOR_2;
   tft_horizontal_sep(y, color);
 }
+
+//////////////////////////////////////////
+
+void tft_init_screen(){
+  // init
+  tft.fillScreen(TFT_BG_COLOR);
+  //tft.setTextFont(12);
+
+  // wifi
+  #ifndef ETHERNET
+    if (WiFi.status() != WL_CONNECTED){ // wifi not connected
+      tft_draw_wifi_bubble(true, "not connected");
+    } else{                             // wifi connected
+      String message = WiFi.SSID();
+      tft_draw_wifi_bubble(false, message);
+    }
+  #else
+  #endif // ETHERNET
+    
+  
+  tft_draw_ip_bubble();
+  tft_draw_ethernet_bubble(true);
+  tft_horizontal_sep1();
+  tft_draw_url_bubble();
+  tft_horizontal_sep2();
+
+};
+
+void tft_update_screen(){
+  # ifndef ETHERNET // wifi only
+    if ( (WiFi.status() == WL_CONNECTED) && (tft_status_wifi == disconnected)){ // wifi connected but disconnected shown on screen
+      tft_status_wifi = connected;
+      tft_draw_wifi_bubble(false, WiFi.SSID());
+      tft_draw_ip_bubble();
+      Serial.println("wifi bubble updated to CONNECTED status");
+    } else if((WiFi.status() != WL_CONNECTED) && (tft_status_wifi == connected)){
+      tft_status_wifi = disconnected;
+      tft_draw_wifi_bubble(true, "not connected");
+      tft_draw_ip_bubble();
+      Serial.println("wifi bubble updated to DISCONNECTED status");
+    } else {
+      // do nothing
+    }
+  #else
+  #endif //ETHERNET
+}
+
+
 
 #endif //LCD
 #endif //TX
