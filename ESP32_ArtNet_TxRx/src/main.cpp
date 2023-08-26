@@ -32,7 +32,8 @@ void setup() {
 
   // set up network
   #ifdef ETHERNET
-  #else  // WIFI
+  #endif
+  #ifdef WIFI
     WiFi.mode(WIFI_STA);
     WiFi.begin(SSID, PWD);
     int wifi_connect_counter = 0;
@@ -51,9 +52,15 @@ void setup() {
 
   // set up ArtNet
   #ifdef TRANSMIT
-    artnet.begin();
-    artnet.subscribe(universe0, artnet_u1_callback);
-    Serial.printf("listening to universe %d\n", universe0);
+    #ifdef ETHERNET
+      arthet_ether.begin();
+      artnet_wifi.subscribe(universe0, artnet_u1_callback);
+    #endif // ETHERNET
+    #ifdef WIFI
+      artnet_wifi.begin();
+      artnet_wifi.subscribe(universe0, artnet_u1_callback);
+      Serial.printf("listening to universe %d\n", universe0);
+    #endif // WIFI
   #endif
 
   // set up dmx
@@ -65,9 +72,10 @@ void setup() {
   
   #ifdef TRANSMIT
     dmx_set_mode(dmx_num, DMX_MODE_WRITE);
-  #else
+  #endif // TRANSMIT
+  #ifdef RECIEVE
     dmx_set_mode(dmx_num, DMX_MODE_READ);
-  #endif
+  #endif // RECIEVE
 
   // set up LEDs
   for (int i=i; i<N_CHANNELS; i++){
@@ -117,7 +125,7 @@ void setup() {
 void loop() {
   #ifdef TRANSMIT
     // recieve ArtNet
-    artnet.parse();
+    artnet_wifi.parse();
     
     // send data on DMX
     if(dmx_available || ((millis()-last_dmx_send) > DMX_SEND_INTERVAL) ){
@@ -134,7 +142,7 @@ void loop() {
     }
 
     // reconnect wifi
-    #ifndef ETHERNET
+    #ifdef WIFI
       if (WiFi.status() != WL_CONNECTED){
         Serial.println("try reconnecting wifi");
         //WiFi.begin(SSID, PWD);
@@ -152,7 +160,7 @@ void loop() {
           ESP.restart();
         }
       }
-    #endif
+    #endif // WIFI
 
   #else
     if (xQueueReceive(dmx_queue, &event, DMX_PACKET_TIMEOUT_TICK)) {
@@ -267,7 +275,7 @@ void printLocalTime(bool newline){
 
 //////////////////////////////////////////
 
-#ifndef ETHERNET
+#ifdef WIFI
 
 void print_wifi_status(){
   if (WiFi.status() == WL_CONNECTED){
@@ -280,7 +288,7 @@ void print_wifi_status(){
   }
 }
 
-#endif // ETHERNET
+#endif // WIFI
 
 //////////////////////////////////////////
 
@@ -288,7 +296,7 @@ void print_wifi_status(){
 #ifdef LCD
 
 void tft_update_screen(){
-  #ifndef ETHERNET // wifi only
+  #ifdef WIFI // wifi only
     if ( (WiFi.status() == WL_CONNECTED) && (tft_status_wifi == disconnected)){ // wifi connected but disconnected shown on screen
       tft_status_wifi = connected;
       tft.draw_wifi_bubble(false, WiFi.SSID());
@@ -303,7 +311,7 @@ void tft_update_screen(){
       // do nothing
     }
   #else
-  #endif //ETHERNET
+  #endif //WIFI
 }
 
 

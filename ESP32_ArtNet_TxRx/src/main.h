@@ -11,10 +11,14 @@ void printLocalTime(bool newline=true);
 
 
 // LED settings
-byte LED_PINS[] = {22, 19, 5};  // pins at MCU where LEDs are connected
-#define DMX_CHANNEL_OFFSET 1    // DMX base address for LEDs
-#define N_CHANNELS 3            // number of channels occupied by LEDs
-
+#if defined(TRANSMIT) || defined(RECIEVE)
+  byte LED_PINS[] = {22, 19, 5};  // pins at MCU where LEDs are connected
+  #define DMX_CHANNEL_OFFSET 1    // DMX base address for LEDs
+  #define N_CHANNELS 3            // number of channels occupied by LEDs
+#endif 
+#ifdef RECIEVE
+  //
+#endif //RECIEVE
 
 // time
 const char* ntpServer = "pool.ntp.org";
@@ -35,13 +39,15 @@ const int   daylightOffset_sec = 3600;
 
 // artnet
 #ifdef TRANSMIT
-    #ifdef ETHERNET
-        #include <ArtnetEther.h>
-    #else // ETHERNET
-        #include <ArtnetWiFi.h>
-            ArtnetWiFiReceiver artnet;
-            uint8_t universe0 = 0;
-    #endif
+  uint8_t universe0 = 0;
+  #ifdef ETHERNET
+    #include <ArtnetEther.h>
+    ArtnetEtherReceiver artnet_ether;
+  #endif  // ETHERNET
+  #ifdef WIFI
+    #include <ArtnetWiFi.h>
+    ArtnetWiFiReceiver artnet_wifi;
+  #endif  // WIFI
 #else // TRANSMIT
 #endif // TRANSMIT
 
@@ -56,7 +62,8 @@ bool dmx_available = false;
 #ifdef TRANSMIT
   #define DMX_SEND_INTERVAL 1000
   int last_dmx_send = 0;
-#else
+#endif
+#ifdef RECIEVE
   dmx_event_t event;
   byte current_value[N_CHANNELS] = {0};
 #endif

@@ -12,8 +12,14 @@
 #include "Artnet/util/TeensyDirtySTLErrorSolution/TeensyDirtySTLErrorSolution.h"
 #include "Artnet/ArtnetCommon.h"
 
+/*
 using Artnet = arx::artnet::Manager<EthernetUDP>;
 using ArtnetSender = arx::artnet::Sender<EthernetUDP>;
 using ArtnetReceiver = arx::artnet::Receiver<EthernetUDP>;
+*/
+
+using ArtnetEther = arx::artnet::Manager<EthernetUDP>;
+using ArtnetEtherSender = arx::artnet::Sender<EthernetUDP>;
+using ArtnetEtherReceiver = arx::artnet::Receiver<EthernetUDP>;
 
 #endif  // ARTNET_ETHER_H

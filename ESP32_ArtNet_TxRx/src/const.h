@@ -8,6 +8,7 @@
 ** Switch for ethernet-based or WiFi-based network
 */
 //#define ETHERNET
+#define WIFI
 
 /*
 ** Switch for having a LCD or disable all related code
