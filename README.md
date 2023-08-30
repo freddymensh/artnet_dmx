@@ -16,9 +16,9 @@ There are two esp32 in the setup. The _TX_ functiones as a transcoder from ArtNe
 - add a second universe
 
 ### ToDo:
-1. finish the Setup-class by using it as the ressource
-1. write ```String Setup::json()```
-1. write ```String Setup::in()```
+1. finish the Settings-class by using it as the ressource
+1. write ```String Settings::json()```
+1. write ```String Settings::in()```
 1. swap out the MCU for the olimex esp32 PoE
 
 1. fork the [AT-parser](https://github.com/yourapiexpert/ATCommands)
@@ -26,8 +26,8 @@ There are two esp32 in the setup. The _TX_ functiones as a transcoder from ArtNe
 1. define write commands and according callbacks to Setup and others
 
 1. add the SD memory
-1. make the Setup-constructor to init from SD
-1. write ```setup_status Setup::flush()``` to update the ini on the SD
+1. make the Settings-constructor to init from SD
+1. write ```setings_response Settings::flush()``` to update the ini on the SD
 
 1. assign pin for U2TXD
 1. make a second instance of artnetEther to listen to the other universe.
