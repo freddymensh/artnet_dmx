@@ -13,6 +13,26 @@ There are two esp32 in the setup. The _TX_ functiones as a transcoder from ArtNe
 - add an LCD to display several status infos
 - add AT-commands to make settings to the device (network, universe, maybe more)
 - make AT-commands available via http-requests and via USB-UART
+- add a second universe
+
+### ToDo:
+1. finish the Setup-class by using it as the ressource
+1. write ```String Setup::json()```
+1. write ```String Setup::in()```
+1. swap out the MCU for the olimex esp32 PoE
+
+1. fork the [AT-parser](https://github.com/yourapiexpert/ATCommands)
+1. add function to it to inject AT-commands from inside the code.
+1. define write commands and according callbacks to Setup and others
+
+1. add the SD memory
+1. make the Setup-constructor to init from SD
+1. write ```setup_status Setup::flush()``` to update the ini on the SD
+
+1. assign pin for U2TXD
+1. make a second instance of artnetEther to listen to the other universe.
+1. extend the Setup-class to meet the handling of the second universe
+
 
 # Development
 Development was done wit Platformio in VSCode. Due to the ESP32 mcu the platform espressif32 at version 5.0.0 was used. Ther version number is the one you select during installing the platform in Platformio. 
