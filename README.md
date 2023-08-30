@@ -18,7 +18,7 @@ There are two esp32 in the setup. The _TX_ functiones as a transcoder from ArtNe
 ### ToDo:
 1. finish the Settings-class by using it as the ressource
 1. write ```String Settings::json()```
-1. write ```String Settings::in()```
+1. write ```String Settings::ini()```
 1. swap out the MCU for the olimex esp32 PoE
 
 1. fork the [AT-parser](https://github.com/yourapiexpert/ATCommands)
