@@ -26,7 +26,7 @@ There are two esp32 in the setup. The _TX_ functiones as a transcoder from ArtNe
 1. define write commands and according callbacks to Setup and others
 
 1. add the SD memory
-1. make the Settings-constructor to init from SD
+1. make the Settings-constructor to init from SD [(SD example)](https://raw.githubusercontent.com/OLIMEX/ESP32-POE/master/SOFTWARE/ARDUINO/ESP32_PoE_Ethernet_SD_Card_Arduino/ESP32_PoE_Ethernet_SD_Card_Arduino.ino) with the [ini-library](https://github.com/stevemarple/IniFile)
 1. write ```setings_response Settings::flush()``` to update the ini on the SD
 
 1. assign pin for U2TXD
