@@ -3,6 +3,9 @@
 //#include <ArtnetETH.h>
 #include <ArtnetWiFi.h>
 
+//defines
+#define DEBUG
+
 // functions
 void service_dmx_status_print(void * pvParameters);
 void print_dmx(byte* dmx_buffer);
@@ -10,12 +13,18 @@ void printLocalTime(bool newline);
 void printLocalTime(bool newline=true);
 void artnet_u1_callback(const uint8_t* data, const uint16_t size);
 void print_wifi_status();
+void printMacAddress();
+void listNetworks(int numSsid);
 
 // network
 #include <WiFi.h>
+#include "network.h"
 #define WIFI_RECONNECT_TRIALS 50
-const char* SSID = "FREDDY-L390 6365";//"Jubel";//"FREDDY-L390 6365";
-const char* PWD = "0936u)1E";//"69792805351678254921";//"0936u)1E";    
+// set ssids and passwords here and put the number of it to WifiNetworks-constructor
+WifiPw wifipws[] = {WifiPw("FranziskusStream", "27502759640590234460"),
+                    WifiPw("FREDDY-L390 6365", "0936u)1E"),
+                    WifiPw("Jubel", "69792805351678254921")};
+WifiNetworks wifinetw = WifiNetworks(wifipws, 3);
 
 // time
 const char* ntpServer = "pool.ntp.org";
@@ -44,23 +53,50 @@ ArtnetWiFi artnet;
 //////////////////////////////////////////
 
 void setup() {
-  Serial.begin(250000); //115200
+  Serial.begin(115200); //115200   250000
 
   // set up network
   WiFi.mode(WIFI_STA);
-  WiFi.begin(SSID, PWD);
-  int wifi_connect_counter = 0;
-  while ((WiFi.status() != WL_CONNECTED) and (wifi_connect_counter < WIFI_RECONNECT_TRIALS)) {
-    Serial.print(".");
-    wifi_connect_counter++;
-  delay(250);
+  int numSsid = WiFi.scanNetworks();
+  #ifdef DEBUG
+    Serial.printf("%d networks are known: ", wifinetw.n);
+    wifinetw.print_known_ssid();
+    listNetworks(numSsid);
+  #endif // DEBUG
+
+  for (int i=0; i<numSsid; i++){
+    // break loop if wifi is already connected
+    if (WiFi.status() == WL_CONNECTED){
+      break;
+    }
+
+    // loop over available networks and try to connect to them
+    if (wifinetw.is_known(WiFi.SSID(i)) ){
+      WifiPw nw = wifinetw.get_network(WiFi.SSID(i));
+      
+      Serial.printf("Try connecting to %s", nw.SSID);
+      WiFi.begin(nw.SSID, nw.password);
+      int wifi_connect_counter = 0;
+      while ((WiFi.status() != WL_CONNECTED) and (wifi_connect_counter < WIFI_RECONNECT_TRIALS)) {
+        Serial.print(".");
+        wifi_connect_counter++;
+        delay(250);
+      }
+      if (WiFi.status() == WL_CONNECTED){
+        print_wifi_status();
+      } else {
+        Serial.println("failed. Try next SSID.");
+      }
+    } else {
+      continue;
+    }
   }
-  if (WiFi.status() == WL_CONNECTED){
-    print_wifi_status();
-  } else {
+  if (WiFi.status() != WL_CONNECTED){
     Serial.println("Wifi connection failed. Rebooting...");
     ESP.restart();
   }
+
+  //
   
   // configure time
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
@@ -70,7 +106,7 @@ void setup() {
   // set up dmx
   const dmx_config_t config = DMX_DEFAULT_CONFIG;
   dmx_param_config(dmx_num, &config);
-  const int tx_io_num = 32, rx_io_num = 33, rts_io_num = 16;
+  const int tx_io_num = 16, rx_io_num = 33, rts_io_num = 32;
   dmx_set_pin(dmx_num, tx_io_num, rx_io_num, rts_io_num);
   dmx_driver_install(dmx_num, DMX_MAX_PACKET_SIZE, 10, &dmx_queue, ESP_INTR_FLAG_IRAM);
   dmx_set_mode(dmx_num, DMX_MODE_WRITE);
@@ -206,4 +242,77 @@ void print_wifi_status(){
     Serial.println("WiFi not connected.");
   }
 }
+
+
+
+
+/////////////////////////
+void printMacAddress() {
+  // the MAC address of your Wifi shield
+  byte mac[6];
+
+  // print your MAC address:
+  WiFi.macAddress(mac);
+  Serial.print("MAC: ");
+  Serial.print(mac[5], HEX);
+  Serial.print(":");
+  Serial.print(mac[4], HEX);
+  Serial.print(":");
+  Serial.print(mac[3], HEX);
+  Serial.print(":");
+  Serial.print(mac[2], HEX);
+  Serial.print(":");
+  Serial.print(mac[1], HEX);
+  Serial.print(":");
+  Serial.println(mac[0], HEX);
+}
+
+void listNetworks(int numSsid) {
+  if (numSsid < 0) {
+    return;
+  }
+
+  // print the list of networks seen:
+  Serial.printf("Discovered %d wifi-networks.\n", numSsid);
+
+  // print the network number and name for each network found:
+  for (int thisNet = 0; thisNet < numSsid; thisNet++) {
+    Serial.print(thisNet);
+    Serial.print(") ");
+    Serial.print(WiFi.SSID(thisNet));
+    Serial.print("\tSignal: ");
+    Serial.print(WiFi.RSSI(thisNet));
+    Serial.print(" dBm");
+    Serial.printf("\t known: %s", wifinetw.is_known(WiFi.SSID(thisNet)) ? "true" : "false");
+    //Serial.print("\tEncryption: ");
+    //printEncryptionType(WiFi.encryptionType(thisNet));
+    Serial.println("");
+  }
+  Serial.println("");
+}
+
+/*
+void printEncryptionType(int thisType) {
+  // read the encryption type and print out the name:
+  switch (thisType) {
+    case ENC_TYPE_WEP:
+      Serial.println("WEP");
+      break;
+    case ENC_TYPE_TKIP:
+      Serial.println("WPA");
+      break;
+    case ENC_TYPE_CCMP:
+      Serial.println("WPA2");
+      break;
+    case ENC_TYPE_NONE:
+      Serial.println("None");
+      break;
+    case ENC_TYPE_AUTO:
+      Serial.println("Auto");
+      break;
+  }
+}
+*/
+
+
 
