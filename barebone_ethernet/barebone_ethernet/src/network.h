@@ -1,7 +1,9 @@
 #include <Arduino.h>
+#include <vector>
 
 class WifiPw{
     public:
+        WifiPw();
         WifiPw(String SSID, String password);
         ~WifiPw();
         String password;
@@ -9,6 +11,11 @@ class WifiPw{
         
         bool operator==(WifiPw);
 };
+
+WifiPw::WifiPw(){
+    this->SSID = "";
+    this->password = "";
+}
 
 WifiPw::WifiPw(String SSID, String password){
     this->SSID = SSID;
@@ -27,6 +34,7 @@ bool WifiPw::operator==(WifiPw other){
 
 class WifiNetworks{
     public:
+        WifiNetworks();
         WifiNetworks(WifiPw* networks, int16_t n);
         ~WifiNetworks();
         
@@ -38,19 +46,24 @@ class WifiNetworks{
         void print_known_ssid();
         String SSID(int idx);
         WifiPw get_network(String SSID);
+        void set(WifiPw* networks, int16_t n);
+        //void WifiNetworks::set(vector<WifiPw> networks);
 
     protected:
         WifiPw* networks;  
 };
 
+WifiNetworks::WifiNetworks(){
+}
 
 WifiNetworks::WifiNetworks(WifiPw* networks, int16_t n){
-    this->networks = networks;
-    this->n = n; //(int16_t) (sizeof(this->networks) / sizeof(WifiPw));
+    this->set(networks, n);
 }
 
 
-WifiNetworks::~WifiNetworks(){};
+WifiNetworks::~WifiNetworks(){
+    free(this->networks);
+};
 
 
 bool WifiNetworks::is_known(String SSID){
@@ -100,3 +113,13 @@ WifiPw WifiNetworks::get_network(String SSID){
     }
     return WifiPw("", "");
 }
+
+
+void WifiNetworks::set(WifiPw* networks, int16_t n){
+  this->networks = new WifiPw[n];
+  this->n = n; //(int16_t) (sizeof(this->networks) / sizeof(WifiPw));
+  for (int i = 0; i < n; i++) {
+      this->networks[i] = networks[i];
+  }
+}
+

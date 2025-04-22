@@ -68,81 +68,85 @@ enum settings_response {SETTING_OK, SETTING_NOK};
 #endif //LCD
 
 
-class Settings{
-    public: 
-        Settings();
-        ~Settings();
+#ifndef _Settings
+#define _Settings
 
-        // artnet
-        settings_response set_universe(uint8_t universe);
-        uint8_t get_universe();
+    class Settings{
+        public: 
+            Settings();
+            ~Settings();
 
-        // DMX
-        uint64_t get_dmx_buffer_size();
+            // artnet
+            settings_response set_universe(uint8_t universe);
+            uint8_t get_universe();
+
+            // DMX
+            uint64_t get_dmx_buffer_size();
+            
+            // network
+            settings_response set_network_type(network_type_t nt);
+            #ifdef WIFI
+            settings_response disable_wifi();
+            settings_response enable_wifi();
+            #endif //WIFI
+            #ifdef ETHERNET
+            settings_response disable_ether();
+            settings_response enable_ether();
+            #endif // ETHERNET        
+
+            // wifi
+            settings_response set_ssid(String ssid);
+            String get_ssid();
+            settings_response set_password(String password);
+            String get_passwword();
+
+            // time
+            
+            //lcd
+            LCDSettings lcd;
+
+
+        protected:
+            // artnet
+            uint8_t universe = 0; // the universe artnet listens to
+
+            // DMX
+            int64_t dmx_max_packet_size = 513; // the buffer size for dmx. The entry at index 0 is not used. So increase the size by +1 to fit all data in. 
+            uint32_t dmx_send_interval = 1000; // interval in milli seconds until the MCU prints teh current dmx buffer onto the serial  
+
+            // network
+                // nt: seting to configure which network types can be used. It's used to enable/disable only the by hardware available ones
+            #if defined(WIFI) && !defined(ETHER)
+                network_type_t nt = wifi_only;  
+            #endif
+            #if !defined(WIFI) && defined(ETHER)
+                network_type_t nt = ethernet_only;
+            #endif
+            #if defined(WIFI) && defined(ETHER)
+                network_type_t nt = ether_wifi;
+            #endif
+            #if !defined(WIFI) && !defined(ETHER)
+                network_type_t nt = no_network;
+            #endif
+
+            // wifi
+            int32_t wifi_reconnect_trials = 50;     // reconnect trials until the MCU restarts
+            String ssid;        // wifi ssid
+            String password;    // wifi password
+
+            //time
+            String  ntpServer = "pool.ntp.org"; // time server
+            int64_t gmtOffset_sec = 3600;       // time zone offset
+            int32_t daylightOffset_sec = 3600;  // daylight saving offset
+
         
-        // network
-        settings_response set_network_type(network_type_t nt);
-        #ifdef WIFI
-        settings_response disable_wifi();
-        settings_response enable_wifi();
-        #endif //WIFI
-        #ifdef ETHERNET
-        settings_response disable_ether();
-        settings_response enable_ether();
-        #endif // ETHERNET        
+    };
 
-        // wifi
-        settings_response set_ssid(String ssid);
-        String get_ssid();
-        settings_response set_password(String password);
-        String get_passwword();
+    Settings::Settings(){
+        #ifdef LCD
+            this->lcd = LCDSettings();
+        #endif //LCD
 
-        // time
-        
-        //lcd
-        LCDSettings lcd;
-
-
-    protected:
-        // artnet
-        uint8_t universe = 0; // the universe artnet listens to
-
-        // DMX
-        int64_t dmx_max_packet_size = 513; // the buffer size for dmx. The entry at index 0 is not used. So increase the size by +1 to fit all data in. 
-        uint32_t dmx_send_interval = 1000; // interval in milli seconds until the MCU prints teh current dmx buffer onto the serial  
-
-        // network
-            // nt: seting to configure which network types can be used. It's used to enable/disable only the by hardware available ones
-        #if defined(WIFI) && !defined(ETHER)
-            network_type_t nt = wifi_only;  
-        #endif
-        #if !defined(WIFI) && defined(ETHER)
-            network_type_t nt = ethernet_only;
-        #endif
-        #if defined(WIFI) && defined(ETHER)
-            network_type_t nt = ether_wifi;
-        #endif
-        #if !defined(WIFI) && !defined(ETHER)
-            network_type_t nt = no_network;
-        #endif
-
-        // wifi
-        int32_t wifi_reconnect_trials = 50;     // reconnect trials until the MCU restarts
-        String ssid;        // wifi ssid
-        String password;    // wifi password
-
-        //time
-        String  ntpServer = "pool.ntp.org"; // time server
-        int64_t gmtOffset_sec = 3600;       // time zone offset
-        int32_t daylightOffset_sec = 3600;  // daylight saving offset
-
-    
-};
-
-Settings::Settings(){
-    #ifdef LCD
-        this->lcd = LCDSettings();
-    #endif //LCD
-
-    // TODO: read from SD
-}
+        // TODO: read from SD
+    }
+#endif //_Settings

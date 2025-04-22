@@ -1,7 +1,13 @@
 #include <Arduino.h>
+#include <vector>
 #include "esp_dmx.h"
 //#include <ArtnetETH.h>
 #include <ArtnetWiFi.h>
+#include "FS.h"
+#include "SD_MMC.h"
+#include <ArduinoJson.h>
+#include <WiFi.h>
+#include "network.h"
 
 //defines
 #define DEBUG
@@ -15,16 +21,21 @@ void artnet_u1_callback(const uint8_t* data, const uint16_t size);
 void print_wifi_status();
 void printMacAddress();
 void listNetworks(int numSsid);
+void initSD();
+void printConfig(fs::FS &fs, const char* filename);
+void loadConfig(fs::FS &fs, const char* filename, WifiNetworks &networks);
 
 // network
-#include <WiFi.h>
-#include "network.h"
 #define WIFI_RECONNECT_TRIALS 50
-// set ssids and passwords here and put the number of it to WifiNetworks-constructor
-WifiPw wifipws[] = {WifiPw("FranziskusStream", "27502759640590234460"),
-                    WifiPw("FREDDY-L390 6365", "0936u)1E"),
-                    WifiPw("Jubel", "69792805351678254921")};
-WifiNetworks wifinetw = WifiNetworks(wifipws, 3);
+/* set ssids and passwords in the json on the sd. eg:
+ {
+  "wifi": [	
+	  {"ssid": "my-first-ssid", "pw": "mY-fIrST-aWEsOme-pASswOrd"},
+    {"ssid": "my-first-ssid", "pw": "thE-SecONd-paSswORd"}
+  ]
+}
+*/
+WifiNetworks wifinetw;
 
 // time
 const char* ntpServer = "pool.ntp.org";
@@ -48,12 +59,21 @@ uint8_t universe0 = 0;
 //ArtnetReceiver artnet;
 ArtnetWiFi artnet;
 
+// setup-file & SD
+const char* config_filename = "/config.json";
+
 //////////////////////////////////////////
 ///               SETUP                ///
 //////////////////////////////////////////
 
 void setup() {
   Serial.begin(115200); //115200   250000
+  // SD
+  initSD();
+  #ifdef DEBUG
+  printConfig(SD_MMC, config_filename);
+  #endif  //DEBUG
+  loadConfig(SD_MMC, config_filename, wifinetw);
 
   // set up network
   WiFi.mode(WIFI_STA);
@@ -315,4 +335,50 @@ void printEncryptionType(int thisType) {
 */
 
 
+void initSD(){
+  if(!SD_MMC.begin("/sdcard", true))
+  {
+      Serial.println("Card Mount Failed");
+      Serial.println("Note: is it formated as FAT32? (exFAT and other formats at NOT supported)");
+  }
+}
 
+void printConfig(fs::FS &fs, const char* filename){
+  File file = fs.open(filename);
+  if (!file) {
+    Serial.println("Failed to open file. Rebooting...");
+    ESP.restart();   
+  }
+  Serial.print("\nconfig from SD\n");
+  while (file.available()) {
+    Serial.write(file.read()); // This prints each character as it is read
+  }
+  Serial.print("\n");
+  file.close();
+}
+
+
+void loadConfig(fs::FS &fs, const char* filename, WifiNetworks &networks){
+  File file = fs.open(filename);
+  if (!file) {
+    Serial.println("Failed to open file. Rebooting...");
+    ESP.restart();   
+  }
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, file);
+  if (error){
+    Serial.println(F("Failed to read file."));
+    Serial.println(error.c_str());
+  }
+
+  size_t n_known_nw = doc["wifi"].size();
+  Serial.println("after size before malloc");
+  std::vector<WifiPw> passwords;
+
+  for(int i=0; i<n_known_nw; i++){
+    passwords.push_back(WifiPw(doc["wifi"][i]["ssid"], doc["wifi"][i]["pw"]));
+  }
+  networks.set(passwords.data(), n_known_nw);
+
+  file.close();
+}
